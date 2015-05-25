@@ -1,6 +1,7 @@
 import logging
 import pymongo
 from gensim import corpora, models, similarities
+import itertools
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
@@ -8,7 +9,7 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 # db = client.github
 # repos = db.repos
 
-stoplist = set([line.strip('\n').strip() for line in open('stop-words.txt')])
+stoplist = set([line.strip('\n').strip() for line in open('stopwords.txt')])
 
 # def iterator():
 #     for repo in repos.find():
@@ -48,13 +49,30 @@ def compute_tfidf(dictionary, corpus, load=False):
     corpus_tfidf = tfidf[corpus]
     return corpus_tfidf
 
+def compute_lda(dictionary, corpus, num_topics, load=False):
+    if load:
+        dictionary = corpora.Dictionary.load('%s.dict' % dictionary)
+        corpus = corpora.MmCorpus('%s.mm' % corpus)
+    lda = models.LdaModel(corpus, id2word=dictionary, num_topics=num_topics)
+    corpus_lda = lda[corpus]
+    return corpus_lda
 
+def compute_similarity(corpus_lda):
+    index = similarities.MatrixSimilarity(corpus_lda)
+    for sims in itertools.islice(index, 0, 3):
+        sims = sorted(enumerate(sims), key=lambda item: -item[1])
+        print sims
 
 if __name__ == '__main__':
     SAVENAME = "readme"
     # dictionary = compute_dictionary(savename)
     # corpus = compute_vectors(dictionary, savename)
-    corpus_tfidf = compute_tfidf(SAVENAME, SAVENAME, True)
-    for doc in corpus_tfidf:
-        print(doc)
+
+    # corpus_tfidf = compute_tfidf(SAVENAME, SAVENAME, True)
+    # for doc in corpus_tfidf:
+    #     print(doc)
+
+    corpus_lda = compute_lda(SAVENAME, SAVENAME, 10, True)
+    compute_similarity(corpus_lda)
+
 

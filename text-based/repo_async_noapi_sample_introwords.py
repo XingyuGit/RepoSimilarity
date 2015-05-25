@@ -12,7 +12,7 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 class Repo(object):
 
-    ignorewords = set([line.strip('\n').strip() for line in open('stop-words.txt')])
+    ignorewords = set([line.strip('\n').strip() for line in open('stopwords.txt')])
     introwords = {}
 
     nonalpha_re = re.compile(r"[^a-zA-Z'-]")

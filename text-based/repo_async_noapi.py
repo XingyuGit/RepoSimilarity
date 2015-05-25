@@ -24,7 +24,7 @@ class Repo(object):
         'description', 'introduction', 'overview'
     ])
 
-    ignorewords = set([line.strip('\n').strip() for line in open('stop-words.txt')])
+    ignorewords = set([line.strip('\n').strip() for line in open('stopwords.txt')])
 
     nonalpha_re = re.compile(r"[^a-zA-Z'-]")
     url_re = re.compile(r"http(s?):\/\/\S*")
