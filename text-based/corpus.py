@@ -48,6 +48,8 @@ def compute_tfidf(dictionary, corpus, load=False):
     corpus_tfidf = tfidf[corpus]
     return corpus_tfidf
 
+
+
 if __name__ == '__main__':
     SAVENAME = "readme"
     # dictionary = compute_dictionary(savename)
