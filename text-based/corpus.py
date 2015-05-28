@@ -55,8 +55,8 @@ def compute_lda(dictionary, corpus, num_topics, load=False):
     corpus_lda = lda[corpus]
     return corpus_lda
 
-def compute_similarity(corpus_lda):
-    index = similarities.MatrixSimilarity(corpus_lda)
+def compute_similarity(corpus):
+    index = similarities.MatrixSimilarity(corpus)
     return index
 
 if __name__ == '__main__':
@@ -75,6 +75,11 @@ if __name__ == '__main__':
 
     # for doc in corpus_tfidf:
     #     print(doc)
+
+    index = compute_similarity(corpus_tfidf)
+    for sims in itertools.islice(index, 0, 3):
+        sims = sorted(enumerate(sims), key=lambda item: -item[1])
+        print sims
 
     corpus_lda = compute_lda(SAVENAME, SAVENAME, 10, True)
     corpora.MmCorpus.serialize('%s_lda.mm' % SAVENAME, corpus_lda)
