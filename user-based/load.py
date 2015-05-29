@@ -10,8 +10,8 @@ if __name__ == '__main__':
         filepath = os.path.join(dirpath, name)
         if filepath.find('.csv') == -1:
             continue
-        #if filepath.find('010') == -1:
-        #    continue
+        if filepath.find('021') == -1:
+            continue
         print('processing '+filepath+'...')
         if os.path.isfile(filepath):
             with open(filepath) as f:
