@@ -53,7 +53,7 @@ class TextModel(object):
         self.dictionary.compactify()
         # remove extreme words
         self.dictionary.filter_extremes(no_below=5,
-                                        no_above=float(self.word_frequency_upper_bound)/self.i,
+                                        no_above=float(self.word_frequency_upper_bound)/len(self.dictionary),
                                         keep_n=None)
         # compute vectors
         self.corpus = [self.dictionary.doc2bow(words) for words in self.iterator()]
@@ -129,12 +129,12 @@ class TextModel(object):
 
 if __name__ == '__main__':
     model = TextModel()
-    first_time = True
+    first_time = False
     if first_time:
         model.init()
         model.save()
     else:
         model.load()
     model.set_num_best(100)
-    sims = model.query("andymccurdy/redis-py", "tfidf")
+    sims = model.query("andymccurdy/redis-py")
     print sims
