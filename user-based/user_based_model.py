@@ -21,7 +21,7 @@ class RepoModel(object):
     num_stars_upper_bound = 100
     num_repos_upper_bound = 2000000
 
-    def __init__(self, directory='genism'):
+    def __init__(self, directory='gensim'):
         self.i = 0
         self.id2repo = {}
         self.directory = ensure_directory(directory)

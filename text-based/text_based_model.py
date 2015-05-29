@@ -21,10 +21,10 @@ def ensure_directory(directory):
 class TextModel(object):
 
     num_topics = 100
-    word_frequency_upper_bound = 1000
+    word_frequency_upper_bound = 500
     num_repos_upper_bound = 2000000
 
-    def __init__(self, directory='genism'):
+    def __init__(self, directory='gensim'):
         self.i = 0
         self.id2doc = {}
         self.directory = ensure_directory(directory)
@@ -53,7 +53,7 @@ class TextModel(object):
         self.dictionary.compactify()
         # remove extreme words
         self.dictionary.filter_extremes(no_below=5,
-                                        no_above=float(self.num_stars_upper_bound)/self.i,
+                                        no_above=float(self.word_frequency_upper_bound)/self.i,
                                         keep_n=None)
         # compute vectors
         self.corpus = [self.dictionary.doc2bow(words) for words in self.iterator()]
@@ -117,10 +117,10 @@ class TextModel(object):
             return None
 
         if self.num_best is None:
-            return [(self.id2repo[id], cosine) for id, cosine in
+            return [(self.id2doc[id], cosine) for id, cosine in
                 sorted(enumerate(sims), key=lambda item: -item[1]) if cosine > 0]
         else:
-            return [(self.id2repo[id], cosine) for id, cosine in sims]
+            return [(self.id2doc[id], cosine) for id, cosine in sims]
 
     def set_num_best(self, num_best):
         self.num_best = num_best
@@ -136,5 +136,5 @@ if __name__ == '__main__':
     else:
         model.load()
     model.set_num_best(100)
-    sims = model.query("andymccurdy/redis-py")
+    sims = model.query("andymccurdy/redis-py", "tfidf")
     print sims
