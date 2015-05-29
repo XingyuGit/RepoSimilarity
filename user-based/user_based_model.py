@@ -4,6 +4,7 @@ from gensim import corpora, models, similarities
 import itertools
 import os
 import pickle
+import math
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
@@ -16,14 +17,15 @@ def ensure_directory(directory):
 
 class RepoModel(object):
 
-    num_topics = 10
-    num_stars_upper_bound = 1000
-    num_repos_upper_bound = 10000
+    # num_topics = 10
+    num_stars_upper_bound = 100
+    num_repos_upper_bound = 2000000
 
     def __init__(self, directory='genism'):
         self.i = 0
         self.id2repo = {}
         self.directory = ensure_directory(directory)
+        self.num_best = None
 
     def iterator(self):
         for key in itertools.islice(r.scan_iter('repo:*'), 0, self.num_repos_upper_bound):
@@ -37,9 +39,9 @@ class RepoModel(object):
         # remove gaps in id sequence after words that were removed
         self.dictionary.compactify()
         # remove extreme words
-        self.dictionary.filter_extremes(no_below=3,
+        self.dictionary.filter_extremes(no_below=5,
                                         no_above=float(self.num_stars_upper_bound)/self.i,
-                                        keep_n=100000)
+                                        keep_n=None)
         # compute vectors
         self.corpus = [self.dictionary.doc2bow(words) for words in self.iterator()]
 
@@ -48,19 +50,19 @@ class RepoModel(object):
         self.corpus_tfidf = self.tfidf[self.corpus]
 
         # compute lda
-        self.lda = models.LdaModel(self.corpus, id2word=self.dictionary, num_topics=self.num_topics)
+        num_topics = 100
+        self.lda = models.LdaMulticore(self.corpus, id2word=self.dictionary, workers=3,
+                                   num_topics=num_topics, chunksize=10000)
         self.corpus_lda = self.lda[self.corpus]
 
         # compute_similarity_index
-        self.sim_bow_index = similarities.Similarity('%s/bow.shard' % self.directory,
-                        self.corpus, len(self.dictionary))
         self.sim_tfidf_index = similarities.Similarity('%s/tfidf.shard' % self.directory,
-                        self.corpus_tfidf, len(self.dictionary))
+                        self.corpus_tfidf, len(self.dictionary), chunksize=256, shardsize=131072)
         self.sim_lda_index = similarities.Similarity('%s/lda.shard' % self.directory,
-                        self.corpus_lda, len(self.dictionary))
+                        self.corpus_lda, self.lda.num_topics, chunksize=256, shardsize=131072)
 
     def save(self):
-        pickle.dump(self.id2doc, open('%s/id2doc' % self.directory, 'w'))
+        pickle.dump(self.id2repo, open('%s/id2repo' % self.directory, 'w'))
         self.dictionary.save('%s/users.dict' % self.directory)
 
         corpora.MmCorpus.serialize('%s/corpus_bow.mm' % self.directory, self.corpus)
@@ -70,19 +72,17 @@ class RepoModel(object):
         self.tfidf.save('%s/tfidf.model' % self.directory)
         self.lda.save('%s/lda.model' % self.directory)
 
-        self.sim_bow_index.save('%s/bow.index' % self.directory)
         self.sim_tfidf_index.save('%s/tfidf.index' % self.directory)
         self.sim_lda_index.save('%s/lda.index' % self.directory)
 
     def load(self):
-        self.id2doc = pickle.load(open('%s/id2doc' % self.directory, 'r'))
+        self.id2repo = pickle.load(open('%s/id2repo' % self.directory, 'r'))
         self.dictionary = corpora.Dictionary.load('%s/users.dict' % self.directory)
         self.corpus = corpora.MmCorpus('%s/corpus_bow.mm' % self.directory)
         self.corpus_tfidf = corpora.MmCorpus('%s/corpus_tfidf.mm' % self.directory)
         self.corpus_lda = corpora.MmCorpus('%s/corpus_lda.mm' % self.directory)
         self.tfidf = models.TfidfModel.load('%s/tfidf.model' % self.directory)
-        self.lda = models.LdaModel.load('%s/lda.model' % self.directory)
-        self.sim_bow_index = similarities.Similarity.load('%s/bow.index' % self.directory)
+        self.lda = models.LdaMulticore.load('%s/lda.model' % self.directory)
         self.sim_tfidf_index = similarities.Similarity.load('%s/tfidf.index' % self.directory)
         self.sim_lda_index = similarities.Similarity.load('%s/lda.index' % self.directory)
 
@@ -97,13 +97,27 @@ class RepoModel(object):
             vec_tfidf = self.tfidf[vec_bow]
             sims = self.sim_tfidf_index[vec_tfidf]
         else:
-            sims = self.sim_bow_index[vec_bow]
+            return None
 
-        return [(self.id2repo[id], cosine) for id, cosine in
+        if self.num_best is None:
+            return [(self.id2repo[id], cosine) for id, cosine in
                 sorted(enumerate(sims), key=lambda item: -item[1]) if cosine > 0]
+        else:
+            return [(self.id2repo[id], cosine) for id, cosine in sims]
+
+    def set_num_best(self, num_best):
+        self.num_best = num_best
+        self.sim_tfidf_index.num_best = num_best
+        self.sim_lda_index.num_best = num_best
 
 if __name__ == '__main__':
     model = RepoModel()
-    model.init()
+    first_time = True
+    if first_time:
+        model.init()
+        model.save()
+    else:
+        model.load()
+    model.set_num_best(100)
     sims = model.query("andymccurdy/redis-py")
     print sims
