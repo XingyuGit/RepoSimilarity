@@ -121,10 +121,10 @@ def eval_time_with_range(test_repo_name):
             f1score_list.append(f1score)
 
         plot_f1score(f1score_list=f1score_list, precision_list=precision_list, 
-            recall_list=recall_list, title = 'std='+str(std))
+            recall_list=recall_list, title='std='+str(time_range))
 
         plot_precision_recall(recall_list=recall_list, precision_list=precision_list, 
-            title = 'std='+str(std))
+            title='std='+str(time_range))
 
 if __name__ == '__main__':
     test_repo_name = 'jashkenas/backbone'
@@ -134,4 +134,3 @@ if __name__ == '__main__':
     # eval_time_with_range(test_repo_name)
     eval_time_within_group(showcase_js)
     plt.show()
-        
