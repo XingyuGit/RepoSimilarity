@@ -66,7 +66,7 @@ def eval(k, our_repos, showcase_repos):
     recall = num_commons / len(showcase_repos)
 
     # F1score
-    F1 = 2 * precision * recall / (precision + recall)
+    F1 = 2 * precision * recall / (precision + recall) if precision + recall != 0 else 0
 
     return precision, recall, F1
 
