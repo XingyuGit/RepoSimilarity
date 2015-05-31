@@ -3,6 +3,7 @@ import redis
 import logging
 import time
 import heapq
+import pickle
 
 MIN_STARS = 150
 NUM_TOP_REPOS = 100
@@ -10,15 +11,16 @@ LOG_ROW_FREQ = 100000
 LOG_FILE_NAME = 'compute.log'
 NUM_SEC_A_DAY = 86400    # 86400 ms in a day
 
-
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 logging.basicConfig(filename=LOG_FILE_NAME,level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 
+stars = pickle.load(open('stars.pk', 'r'))
 
 #@profile
 def find_similar_repos(from_repo_name):
     repo_dict = dict()
-    num_star_of_from_repo = r.scard('repo:' + from_repo_name)
+    # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
+    num_star_of_from_repo = stars.get(from_repo_name, 0)
     users = r.smembers('repo:' + from_repo_name)
     for user in users:
         # get all repos the user starred
@@ -34,7 +36,7 @@ def find_similar_repos(from_repo_name):
     repo_jaccard_dict = dict()
     for to_repo in repo_dict:
         count_common_stars = repo_dict[to_repo]['count_common_stars']
-        num_star_of_to_repo = r.scard('repo:' + to_repo)
+        num_star_of_to_repo = stars.get(to_repo, 0)
         jaccard_similarity = 1.0 * count_common_stars / (num_star_of_to_repo + num_star_of_from_repo - count_common_stars)
         repo_dict[to_repo]['jaccard_similarity'] = jaccard_similarity
         repo_jaccard_dict[to_repo] = jaccard_similarity
@@ -48,14 +50,14 @@ def find_similar_repos(from_repo_name):
 
 def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
     repo_dict = dict()
-    num_star_of_from_repo = r.scard('repo:' + from_repo_name)
+    num_star_of_from_repo = stars.get(from_repo_name, 0)
     users = r.smembers('repo:' + from_repo_name)
     for user in users:
         # get the time the user performed the starring event, type: float, millisec since epoch
         user_star_from_repo_time = r.zscore('user:' + user, from_repo_name)
 
         # get the repos the user starred in a given time range
-        half_time_range = NUM_SEC_A_DAY * time_range_in_day / 2
+        half_time_range = NUM_SEC_A_DAY * time_range_in_day / 2.0
         min_time = user_star_from_repo_time - half_time_range
         max_time = user_star_from_repo_time + half_time_range
 
@@ -86,7 +88,7 @@ def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
     repo_jaccard_dict = dict()
     for to_repo in repo_dict:
         count_common_stars = repo_dict[to_repo]['count_common_stars']
-        num_star_of_to_repo = r.scard('repo:' + to_repo)
+        num_star_of_to_repo = stars.get(to_repo, 0)
         jaccard_similarity = 1.0 * count_common_stars / (num_star_of_to_repo + num_star_of_from_repo - count_common_stars)
         repo_dict[to_repo]['jaccard_similarity'] = jaccard_similarity
         repo_jaccard_dict[to_repo] = jaccard_similarity

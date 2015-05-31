@@ -107,16 +107,24 @@ class RepoModel(object):
         self.sim_tfidf_index.num_best = num_best
         self.sim_lda_index.num_best = num_best
 
+
+model = RepoModel()
+first_time = True
+if not first_time:
+    model.load()
+
+stars = pickle.load(open('stars.pk', 'r'))
+
+def find_similar_repos(repo_name, type="lda"):
+    model.set_num_best(100)
+    sims = model.query(repo_name, type)
+    return sims
+
 if __name__ == '__main__':
-    model = RepoModel()
-    first_time = True
     if first_time:
         model.init()
         model.save()
-    else:
-        model.load()
     # model.set_num_best(100)
     sims = model.query("jashkenas/backbone", "tfidf")
-    stars = pickle.load(open('stars.pk', 'r'))
     sims = [(name, score) for name, score in sims if stars.get(name, 0) >= 30]
     print sims[:100]

@@ -2,4 +2,6 @@
 *.csv
 *.rdb
 *.pk
+*.log
+*.pyc
 !.gitignore
