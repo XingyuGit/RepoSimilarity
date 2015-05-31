@@ -21,7 +21,7 @@ def ensure_directory(directory):
 class TextModel(object):
 
     num_topics = 100
-    word_frequency_upper_bound = 500
+    # word_frequency_upper_bound = 1000
     num_repos_upper_bound = 2000000
 
     def __init__(self, directory='gensim'):
@@ -52,9 +52,7 @@ class TextModel(object):
         # remove gaps in id sequence after words that were removed
         self.dictionary.compactify()
         # remove extreme words
-        self.dictionary.filter_extremes(no_below=5,
-                                        no_above=float(self.word_frequency_upper_bound)/len(self.dictionary),
-                                        keep_n=None)
+        self.dictionary.filter_extremes(no_below=10, no_above=0.1, keep_n=None)
         # compute vectors
         self.corpus = [self.dictionary.doc2bow(words) for words in self.iterator()]
 
@@ -129,12 +127,17 @@ class TextModel(object):
 
 if __name__ == '__main__':
     model = TextModel()
-    first_time = False
+    first_time = True
     if first_time:
         model.init()
         model.save()
     else:
         model.load()
-    model.set_num_best(100)
-    sims = model.query("andymccurdy/redis-py")
-    print sims
+    # model.set_num_best(100)
+    sims = model.query("jashkenas/backbone")
+    stars = pickle.load(open('stars.pk', 'r'))
+    sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
+    print sims[:100]
+
+    # model.lda.print_topics()
+    # print model.lda.num_topics

@@ -17,8 +17,8 @@ def ensure_directory(directory):
 
 class RepoModel(object):
 
-    # num_topics = 10
-    num_stars_upper_bound = 100
+    num_topics = 100
+    # num_stars_upper_bound = 100
     num_repos_upper_bound = 2000000
 
     def __init__(self, directory='gensim'):
@@ -39,9 +39,7 @@ class RepoModel(object):
         # remove gaps in id sequence after words that were removed
         self.dictionary.compactify()
         # remove extreme words
-        self.dictionary.filter_extremes(no_below=5,
-                                        no_above=float(self.num_stars_upper_bound)/len(self.dictionary),
-                                        keep_n=None)
+        self.dictionary.filter_extremes(no_below=5, no_above=0.1, keep_n=None)
         # compute vectors
         self.corpus = [self.dictionary.doc2bow(words) for words in self.iterator()]
 
@@ -50,9 +48,8 @@ class RepoModel(object):
         self.corpus_tfidf = self.tfidf[self.corpus]
 
         # compute lda
-        num_topics = 100
         self.lda = models.LdaMulticore(self.corpus, id2word=self.dictionary, workers=3,
-                                   num_topics=num_topics, chunksize=10000)
+                                   num_topics=self.num_topics, chunksize=10000)
         self.corpus_lda = self.lda[self.corpus]
 
         # compute_similarity_index
@@ -112,12 +109,14 @@ class RepoModel(object):
 
 if __name__ == '__main__':
     model = RepoModel()
-    first_time = False
+    first_time = True
     if first_time:
         model.init()
         model.save()
     else:
         model.load()
-    model.set_num_best(100)
-    sims = model.query("andymccurdy/redis-py", "tfidf")
-    print sims
+    # model.set_num_best(100)
+    sims = model.query("jashkenas/backbone", "tfidf")
+    stars = pickle.load(open('stars.pk', 'r'))
+    sims = [(name, score) for name, score in sims if stars.get(name, 0) >= 30]
+    print sims[:100]
