@@ -25,7 +25,7 @@ class RepoModel(object):
         self.i = 0
         self.id2repo = {}
         self.directory = ensure_directory(directory)
-        self.num_best = None
+        self.num_best = 100
 
     def iterator(self):
         for key in itertools.islice(r.scan_iter('repo:*'), 0, self.num_repos_upper_bound):
@@ -96,11 +96,7 @@ class RepoModel(object):
         else:
             return None
 
-        if self.num_best is None:
-            return [(self.id2repo[id], cosine) for id, cosine in
-                sorted(enumerate(sims), key=lambda item: -item[1]) if cosine > 0]
-        else:
-            return [(self.id2repo[id], cosine) for id, cosine in sims]
+        return dict(sims)
 
     def set_num_best(self, num_best):
         self.num_best = num_best
@@ -108,12 +104,10 @@ class RepoModel(object):
         self.sim_lda_index.num_best = num_best
 
 
+first_time = False
 model = RepoModel()
-first_time = True
 if not first_time:
     model.load()
-
-stars = pickle.load(open('stars.pk', 'r'))
 
 def find_similar_repos(repo_name, type="lda"):
     model.set_num_best(100)
@@ -124,7 +118,6 @@ if __name__ == '__main__':
     if first_time:
         model.init()
         model.save()
-    # model.set_num_best(100)
+    model.set_num_best(100)
     sims = model.query("jashkenas/backbone", "tfidf")
-    sims = [(name, score) for name, score in sims if stars.get(name, 0) >= 30]
-    print sims[:100]
+    print sims

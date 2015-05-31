@@ -32,37 +32,15 @@ def find_similar_repo(repo_name, method_name, rank=True):
     return res
 
 
-def merge_results(user_based_lda={}, user_based_tfidf={},
-                  user_based_jaccard={}, user_based_jaccard_withtime={},
-                  text_based_lda={}, text_based_tfidf={}):
-
-    user_based_lda_weight = 0
-    user_based_tfidf_weight = 0
-    user_based_jaccard_weight = 1
-    user_based_jaccard_withtime_weight = 0
-    text_based_lda_weight = 0
-    text_based_tfidf_weight = 0
-
+# mix_ranks: {"m1": {"repo1": 1, "repo2": 2, ...}, ...}
+# mix_weights: {"m1":0.3, "m2":0.7}
+def merge_results(mix_ranks, mix_weights):
     merged = {}
-
-    for repo in user_based_lda:
-        merged[repo] = merged.get(repo, 0) + user_based_lda_weight * user_based_lda[repo]
-
-    for repo in user_based_tfidf:
-        merged[repo] = merged.get(repo, 0) + user_based_tfidf_weight * user_based_tfidf[repo]
-
-    for repo in user_based_jaccard:
-        merged[repo] = merged.get(repo, 0) + user_based_jaccard_weight * user_based_jaccard[repo]
-
-    for repo in user_based_jaccard_withtime:
-        merged[repo] = merged.get(repo, 0) + user_based_jaccard_withtime_weight * user_based_jaccard_withtime[repo]
-
-    for repo in text_based_lda:
-        merged[repo] = merged.get(repo, 0) + text_based_lda_weight * text_based_lda[repo]
-
-    for repo in text_based_tfidf:
-        merged[repo] = merged.get(repo, 0) + text_based_tfidf_weight * text_based_tfidf[repo]
-
+    for method in mix_ranks:
+        rank = mix_ranks[method] # {"repo1": 1, "repo2": 2, ...}
+        weight = mix_weights[method] # 0.3
+        for repo in rank:
+            merged[repo] = merged.get(repo, 0) + weight * rank[repo]
     return merged
 
 
@@ -94,7 +72,6 @@ def eval(k, our_repos, showcase_repos):
 
 
 def plot_precision_recall(precision_list, recall_list):
-
     cmap = cm.cool
     norm = matplotlib.colors.Normalize(vmin=1, vmax=100)
 
@@ -109,36 +86,84 @@ def plot_precision_recall(precision_list, recall_list):
     # plt.colorbar(scmap, ticks=[1, 50, 100], label="Depth")
 
 
-def plot_f1score(f1score_list):
+def plot_f1score(f1score_list, precision_list, recall_list):
     depths = range(1, len(f1score_list)+1)
-    plt.plot(depths, f1score_list, 'b*-')
+    plt.plot(depths, precision_list, 'b-')
+    plt.plot(depths, recall_list, 'r-')
+    plt.plot(depths, f1score_list, 'm-')
 
+
+def plot_comparison(f1score_dict):
+    method_list = []
+    f1score_max_list = []
+    for method in f1score_dict:
+        f1score_list = f1score_dict[method]
+        f1score_max = max(f1score_list)
+        method_list.append(method)
+        f1score_max_list.append(f1score_max)
+    plt.bar(method_list, f1score_max_list, color="blue")
+    plt.xlabel('Methods')
+    plt.ylabel('Best F1Scores')
+    plt.title('Comparison of different methods')
+    plt.legend()
 
 if __name__ == '__main__':
-    # n = 100
-    # X = np.random.normal(0,1,n)
-    # Y = np.random.normal(0,1,n)
 
-    rank = find_similar_repo("jashkenas/backbone", "user_based_jaccard")
-    print str(rank) + "\n"
-    rank = merge_results(user_based_jaccard=rank)
-    print str(rank) + "\n"
-    rank = dict2list(rank)
-    print str(rank) + "\n"
-
+    query_repo_name = "jashkenas/backbone"
     showcase_js = showcase.sc_frontend_javascript_frameworks
 
-    precision_list = []
-    recall_list = []
-    f1score_list = []
-    for i in range(1, len(rank)+1):
-        precision, recall, f1score = eval(i, rank, showcase_js)
-        precision_list.append(precision)
-        recall_list.append(recall)
-        f1score_list.append(f1score)
 
-    fig = plt.figure(1)
-    plot_f1score(f1score_list=f1score_list)
-    fig = plt.figure(2)
-    plot_precision_recall(recall_list=recall_list, precision_list=precision_list)
+    all_methods = ["user_based_jaccard", "user_based_jaccard_withtime",
+                   "user_based_lda", "user_based_tfidf",
+                   "text_based_lda", "text_based_tfidf"]
+
+    mix1 = {"user_based_jaccard":1}
+    mix2 = {"user_based_jaccard_withtime":1}
+    mix3 = {"user_based_lda":1}
+    mix4 = {"user_based_tfidf":1}
+    mix5 = {"user_based_jaccard_withtime":0.5, "user_based_tfidf":0.5}
+    mix6 = {"user_based_jaccard":0.5, "user_based_lda":0.5}
+    query_methods = [mix1, mix2, mix3, mix4, mix5, mix6]
+
+    similar_repos_all_methods = {}
+    for method in all_methods:
+        similar_repos_all_methods[method] = find_similar_repo(query_repo_name, method)
+
+    f1score_dict = {}
+    for mix_method in query_methods:
+        mix_ranks = {}
+        mix_weights = {}
+        for m in mix_method:
+            mix_ranks[m] = similar_repos_all_methods[m]
+            mix_weights[m] = mix_method[m]
+        rank = merge_results(mix_ranks, mix_weights)
+        rank = dict2list(rank)
+
+        precision_list = []
+        recall_list = []
+        f1score_list = []
+        for i in range(1, len(rank)+1):
+            precision, recall, f1score = eval(i, rank, showcase_js)
+            precision_list.append(precision)
+            recall_list.append(recall)
+            f1score_list.append(f1score)
+        f1score_dict[str(mix_method)] = f1score_list
+
+        fig = plt.figure()
+        plot_f1score(f1score_list=f1score_list, precision_list=precision_list, recall_list=recall_list)
+        plt.xlabel("Depths")
+        plt.ylabel('Scores')
+        plt.title(str(mix_method))
+        plt.legend()
+
+        fig = plt.figure()
+        plot_precision_recall(recall_list=recall_list, precision_list=precision_list)
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.title(str(mix_method))
+        plt.legend()
+
+    fig = plt.figure()
+    plot_comparison(f1score_dict)
+
     plt.show()
