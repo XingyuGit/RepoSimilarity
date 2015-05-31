@@ -96,13 +96,12 @@ class RepoModel(object):
         else:
             return None
 
-        return dict(sims)
+        return dict([(self.id2repo[id], cosine) for id, cosine in sims])
 
     def set_num_best(self, num_best):
         self.num_best = num_best
         self.sim_tfidf_index.num_best = num_best
         self.sim_lda_index.num_best = num_best
-
 
 first_time = False
 model = RepoModel()
