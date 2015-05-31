@@ -16,7 +16,7 @@ logging.basicConfig(filename=LOG_FILE_NAME,level=logging.DEBUG,format='%(asctime
 
 stars = pickle.load(open('stars.pk', 'r'))
 
-#@profile
+# @profile
 def find_similar_repos(from_repo_name):
     repo_dict = dict()
     # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
@@ -36,6 +36,7 @@ def find_similar_repos(from_repo_name):
     repo_jaccard_dict = dict()
     for to_repo in repo_dict:
         count_common_stars = repo_dict[to_repo]['count_common_stars']
+        # num_star_of_to_repo = r.scard('repo:' + to_repo)
         num_star_of_to_repo = stars.get(to_repo, 0)
         jaccard_similarity = 1.0 * count_common_stars / (num_star_of_to_repo + num_star_of_from_repo - count_common_stars)
         repo_dict[to_repo]['jaccard_similarity'] = jaccard_similarity
@@ -50,6 +51,7 @@ def find_similar_repos(from_repo_name):
 
 def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
     repo_dict = dict()
+    # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
     num_star_of_from_repo = stars.get(from_repo_name, 0)
     users = r.smembers('repo:' + from_repo_name)
     for user in users:
@@ -61,22 +63,16 @@ def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
         min_time = user_star_from_repo_time - half_time_range
         max_time = user_star_from_repo_time + half_time_range
 
-        # degub
-        user_starred_repos_0 = r.zrange('user:' + user, 0, -1)
-        logging.info('==all==')
-        logging.info(user_starred_repos_0)
-
-        
         user_starred_repos = r.zrangebyscore('user:' + user, min_time, max_time)
-        logging.info('==time==')
+        # logging.info('==time==')
 
-        logging.info('middle: '+str(user_star_from_repo_time))
-        logging.info('middle: '+time.ctime(user_star_from_repo_time))
+        # logging.info('middle: '+str(user_star_from_repo_time))
+        # logging.info('middle: '+time.ctime(user_star_from_repo_time))
 
-        logging.info('min: '+str(min_time)+' max: '+str(max_time))
-        logging.info('min: '+time.ctime(min_time)+ ' max: '+time.ctime(max_time))
+        # logging.info('min: '+str(min_time)+' max: '+str(max_time))
+        # logging.info('min: '+time.ctime(min_time)+ ' max: '+time.ctime(max_time))
         
-        logging.info(user_starred_repos)
+        # logging.info(user_starred_repos)
 
         for user_starred_repo in user_starred_repos:
             if not repo_dict.has_key(user_starred_repo):
@@ -88,6 +84,7 @@ def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
     repo_jaccard_dict = dict()
     for to_repo in repo_dict:
         count_common_stars = repo_dict[to_repo]['count_common_stars']
+        # num_star_of_to_repo = r.scard('repo:' + to_repo)
         num_star_of_to_repo = stars.get(to_repo, 0)
         jaccard_similarity = 1.0 * count_common_stars / (num_star_of_to_repo + num_star_of_from_repo - count_common_stars)
         repo_dict[to_repo]['jaccard_similarity'] = jaccard_similarity
@@ -102,7 +99,7 @@ def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
 
 if __name__ == '__main__':
     from_repo_name = 'jashkenas/backbone'
-    # my_dict = find_similar_repos(from_repo_name)
-    my_dict = find_similar_repos_considering_time(from_repo_name, 4)
+    my_dict = find_similar_repos(from_repo_name)
+    # my_dict = find_similar_repos_considering_time(from_repo_name, 2)
     my_list = sorted(my_dict.items(), key=lambda x: -x[1])
     print my_list
