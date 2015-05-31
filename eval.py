@@ -4,16 +4,32 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcol
 import matplotlib.cm as cm
 
+from user_based import compute as user_based_jaccard
+import showcase_info as showcase
+
+def find_similar_repo(repo_name, method_name, rank=True):
+    res = {}
+    if method_name == "user_based_jaccard":
+        res = user_based_jaccard.find_similar_repos(repo_name)
+    elif method_name == "user_based_jaccard_withtime":
+        res = user_based_jaccard.find_similar_repos_considering_time(repo_name)
+    if rank:
+        res = [repo_name for repo_name, similarity in
+            sorted(enumerate(res), key=lambda item: -item[1])]
+        ranks = range(1, len(res)+1)
+        res = dict(zip(ranks, res))
+    return res
+
 def merge_results(user_based_lda={}, user_based_tfidf={},
                   user_based_jaccard={}, user_based_jaccard_withtime={},
                   text_based_lda={}, text_based_tfidf={}):
 
-    user_based_lda_weight = 1
-    user_based_tfidf_weight = 1
+    user_based_lda_weight = 0
+    user_based_tfidf_weight = 0
     user_based_jaccard_weight = 1
-    user_based_jaccard_withtime_weight = 1
-    text_based_lda_weight = 1
-    text_based_tfidf_weight = 1
+    user_based_jaccard_withtime_weight = 0
+    text_based_lda_weight = 0
+    text_based_tfidf_weight = 0
 
     merged = {}
 
@@ -60,35 +76,45 @@ def eval(k, our_repos, showcase_repos):
     F1 = 2 * precision * recall / (precision + recall)
 
 def plot_precision_recall(precision_list, recall_list):
-    # Make a user-defined colormap.
-    cmap = mcol.LinearSegmentedColormap.from_list("MyCmapName",["r","b"])
 
-    # Make a normalizer
-    norm = mcol.Normalize(vmin=1, vmax=100)
+    cmap = cm.cool
+    norm = matplotlib.colors.Normalize(vmin=1, vmax=100)
 
-    # Turn these into an object that can be used to map depth values to colors and
-    # can be passed to plt.colorbar().
-    # cpick = cm.ScalarMappable(norm=cnorm, cmap=cm1)
-    # cpick.set_array([])
+    # create a ScalarMappable and initialize a data structure
+    scmap = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
+    scmap.set_array([])
 
     depths = range(1, len(precision_list)+1)
-    # colors = [cpick.to_rgba(depths) for d in depths]
-    cmap = cm.jet
 
     plt.scatter(recall_list, precision_list, c=depths, cmap=cmap, norm=norm)
-    # plt.colorbar(cpick, label="Depth")
+    plt.colorbar(scmap, ticks=[1, 50, 100], label="Depth")
 
 def plot_f1score(f1score_list):
     depths = range(1, len(f1score_list)+1)
     plt.plot(depths, f1score_list)
 
 if __name__ == '__main__':
-    n = 100
-    X = np.random.normal(0,1,n)
-    Y = np.random.normal(0,1,n)
+    # n = 100
+    # X = np.random.normal(0,1,n)
+    # Y = np.random.normal(0,1,n)
 
-    print matplotlib.get_backend()
+    rank = find_similar_repo("jashkenas/backbone", "user_based_jaccard")
+    rank = merge_results(user_based_jaccard=rank)
+    rank = dict2list(rank)
 
-    plot_f1score(Y)
+    showcase_js = showcase.sc_frontend_javascript_frameworks
 
-    # plot_precision_recall(X, Y)
+    precision_list = []
+    recall_list = []
+    f1score_list = []
+    for i in range(1, len(rank)+1):
+        precision, recall, f1score = eval(i, rank, showcase_js)
+        precision_list.append(precision)
+        recall_list.append(recall)
+        f1score_list.append(f1score)
+
+    fig = plt.figure(1)
+    plot_f1score(f1score_list=f1score_list)
+    fig = plt.figure(2)
+    plot_precision_recall(recall_list=recall_list, precision_list=precision_list)
+    plt.show()
