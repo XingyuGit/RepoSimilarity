@@ -8,7 +8,7 @@ MIN_STARS = 150
 NUM_TOP_REPOS = 100
 LOG_ROW_FREQ = 100000
 LOG_FILE_NAME = 'compute.log'
-TIME_RANGE = 86400000 * 2    # 86400000 ms in a day
+NUM_SEC_A_DAY = 86400    # 86400 ms in a day
 
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
@@ -46,7 +46,7 @@ def find_similar_repos(from_repo_name):
         result_dict[to_repo] = repo_dict[to_repo]['jaccard_similarity']
     return result_dict
 
-def find_similar_repos_considering_time(from_repo_name):
+def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
     repo_dict = dict()
     num_star_of_from_repo = r.scard('repo:' + from_repo_name)
     users = r.smembers('repo:' + from_repo_name)
@@ -55,9 +55,26 @@ def find_similar_repos_considering_time(from_repo_name):
         user_star_from_repo_time = r.zscore('user:' + user, from_repo_name)
 
         # get the repos the user starred in a given time range
-        min_time = user_star_from_repo_time - TIME_RANGE
-        max_time = user_star_from_repo_time + TIME_RANGE
+        half_time_range = NUM_SEC_A_DAY * time_range_in_day / 2
+        min_time = user_star_from_repo_time - half_time_range
+        max_time = user_star_from_repo_time + half_time_range
+
+        # degub
+        user_starred_repos_0 = r.zrange('user:' + user, 0, -1)
+        logging.info('==all==')
+        logging.info(user_starred_repos_0)
+
+        
         user_starred_repos = r.zrangebyscore('user:' + user, min_time, max_time)
+        logging.info('==time==')
+
+        logging.info('middle: '+str(user_star_from_repo_time))
+        logging.info('middle: '+time.ctime(user_star_from_repo_time))
+
+        logging.info('min: '+str(min_time)+' max: '+str(max_time))
+        logging.info('min: '+time.ctime(min_time)+ ' max: '+time.ctime(max_time))
+        
+        logging.info(user_starred_repos)
 
         for user_starred_repo in user_starred_repos:
             if not repo_dict.has_key(user_starred_repo):
@@ -74,15 +91,16 @@ def find_similar_repos_considering_time(from_repo_name):
         repo_dict[to_repo]['jaccard_similarity'] = jaccard_similarity
         repo_jaccard_dict[to_repo] = jaccard_similarity
 
-    k_keys_sorted_by_values = heapq.nlargest(NUM_TOP_REPOS, repo_jaccard_dict, key=repo_jaccard_dict.get)
+    top_ranked_repos = heapq.nlargest(NUM_TOP_REPOS, repo_jaccard_dict, key=repo_jaccard_dict.get)
     
     result_dict = dict()
-    for to_repo in k_keys_sorted_by_values:
+    for to_repo in top_ranked_repos:
         result_dict[to_repo] = repo_dict[to_repo]['jaccard_similarity']
     return result_dict
 
 if __name__ == '__main__':
-    my_dict = find_similar_repos('jashkenas/backbone')
-    # my_dict = find_similar_repos_considering_time('jashkenas/backbone')
+    from_repo_name = 'jashkenas/backbone'
+    # my_dict = find_similar_repos(from_repo_name)
+    my_dict = find_similar_repos_considering_time(from_repo_name, 4)
     my_list = sorted(my_dict.items(), key=lambda x: -x[1])
     print my_list

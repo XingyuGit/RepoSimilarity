@@ -76,4 +76,4 @@ def load_starting_from(starting_file_num, starting_row_num):
             logging.info('Done processing ' + str(current_file_num) + '\'th file at row ' + str(current_row_num) + ' including 1st row')
 
 if __name__ == '__main__':
-    load_starting_from(1, 0)
+    load_starting_from(9, 1400000)
