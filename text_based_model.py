@@ -3,7 +3,9 @@ import pymongo
 from gensim import corpora, models, similarities
 import itertools
 import os
+import pickle
 from global_import import stars
+
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
