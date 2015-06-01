@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.font_manager as fm
 
-
 def find_mix(repo_name, weighted_method, use_rank=True, bsorted=True):
     repo_sims_dict = {}
     for f, w in weighted_method:
@@ -51,6 +50,7 @@ def plot_precision_recall(precision_list, recall_list, title=""):
     plt.title(title)
     plt.legend()
     plt.show()
+
 
 
 def plot_f1score(f1score_list, precision_list, recall_list, title=""):
@@ -152,4 +152,5 @@ import user_based_model
 import text_based_model
 
 if __name__ == "__main__":
+
     pass

@@ -13,7 +13,7 @@ LOG_FILE_NAME = 'compute.log'
 NUM_SEC_A_DAY = 86400    # 86400 ms in a day
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
-logging.basicConfig(filename=LOG_FILE_NAME,level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+# logging.basicConfig(filename=LOG_FILE_NAME,level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 
 
 # key: user, value: list
@@ -182,6 +182,5 @@ if __name__ == '__main__':
     # my_list = find_similar_repos_jaccard(test_repo_name)
     # my_list = find_similar_repos_jaccard_in_time_range(test_repo_name, 2)
     my_list = find_similar_repos_jaccard_with_time_weight(test_repo_name, 1)
-
 
     print my_list
