@@ -2,18 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.font_manager as fm
-import functools
-import showcase_info as showcase
-from user_based import compute as user_based_jaccard
-# from user_based import user_based_model
-# from text_based import text_based_model
 
-
-def find_mix(repo_name, weighted_method, use_rank=True, sorted=True):
+def find_mix(repo_name, weighted_method, use_rank=True, bsorted=True):
     repo_sims_dict = {}
     for f, w in weighted_method:
         sims = f(repo_name)
-        if not sorted:
+        if not bsorted:
             sims = sorted(sims, key=lambda x: -x[1])
         if use_rank:
             sims = [(r, i+1) for i, (r, s) in enumerate(sims)]
@@ -24,6 +18,7 @@ def find_mix(repo_name, weighted_method, use_rank=True, sorted=True):
     repo_score_list = sorted(repo_sims_dict.items(), key=lambda x: x[1] if use_rank else -x[1])
     repo_ordered_list = [r for r, s in repo_score_list]
     return repo_ordered_list
+
 
 # return (precision, recall, F1score)
 def eval(k, our_repos, showcase_repos):
@@ -46,7 +41,8 @@ def eval(k, our_repos, showcase_repos):
 
     return precision, recall, F1
 
-def plot_precision_recall(precision_list, recall_list, title):
+
+def plot_precision_recall(precision_list, recall_list, title=""):
     fig = plt.figure()
     plt.plot(recall_list, precision_list, 'b.-')
     plt.xlabel('Recall')
@@ -55,7 +51,9 @@ def plot_precision_recall(precision_list, recall_list, title):
     plt.legend()
     plt.show()
 
-def plot_f1score(f1score_list, precision_list, recall_list, title):
+
+
+def plot_f1score(f1score_list, precision_list, recall_list, title=""):
     depths = range(1, len(f1score_list)+1)
     fig = plt.figure()
     plt.plot(depths, precision_list, 'b-')
@@ -66,6 +64,7 @@ def plot_f1score(f1score_list, precision_list, recall_list, title):
     plt.title(title)
     plt.legend()
     plt.show()
+
 
 def plot_comparison(eval_funs, methods_short=[], methods_long=[], title=""):
 
@@ -144,6 +143,13 @@ def eval_group_repos(group_repos, find_similar_repos_func):
     mean_f1score_list = [x / group_size for x in sum_f1score_list]
 
     return mean_precision_list, mean_recall_list, mean_f1score_list
+
+
+import functools
+import showcase_info as showcase
+from user_based import compute as user_based_jaccard
+import user_based_model
+import text_based_model
 
 if __name__ == "__main__":
 
