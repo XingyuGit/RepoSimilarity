@@ -1,58 +1,45 @@
 import logging
-import pymongo
+import redis
 from gensim import corpora, models, similarities
 import itertools
 import os
 import pickle
+import math
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-client = pymongo.MongoClient()
-db = client.github
-repos = db.repos
-
-stoplist = set([line.strip('\n').strip() for line in open('stopwords.txt')])
+r = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 def ensure_directory(directory):
     if not os.path.exists(directory):
         os.mkdir(directory)
     return directory
 
-class TextModel(object):
+class RepoModel(object):
 
     num_topics = 100
-    # word_frequency_upper_bound = 1000
+    # num_stars_upper_bound = 100
     num_repos_upper_bound = 2000000
 
-    def __init__(self, directory='gensim'):
+    def __init__(self, directory='gensim_user'):
         self.i = 0
-        self.id2doc = {}
+        self.id2repo = {}
         self.directory = ensure_directory(directory)
-        self.num_best = None
+        self.num_best = 100
 
     def iterator(self):
-        for repo in itertools.islice(repos.find(), 0, self.num_repos_upper_bound):
-            # join all content in each readme
-            words = ' '.join([p['content'] for p in repo['readme']]).split()
-            # add description
-            words += repo['description'].split()
-            # filter words that are too short
-            words = [word for word in words if len(word) >= 3]
-            # one document at a time
-            self.id2doc[self.i] = repo['full_name']
+        for key in itertools.islice(r.scan_iter('repo:*'), 0, self.num_repos_upper_bound):
+            self.id2repo[self.i] = key[5:]
             self.i += 1
-            yield words
+            yield r.smembers(key)
 
     def init(self):
+        # compute dictionary
         self.dictionary = corpora.Dictionary(self.iterator())
-        stop_ids = [self.dictionary.token2id[stopword] for stopword in stoplist
-                    if stopword in self.dictionary.token2id]
-        # remove stop words and words that appear very few
-        self.dictionary.filter_tokens(stop_ids)
         # remove gaps in id sequence after words that were removed
         self.dictionary.compactify()
         # remove extreme words
-        self.dictionary.filter_extremes(no_below=10, no_above=0.1, keep_n=None)
+        self.dictionary.filter_extremes(no_below=5, no_above=0.1, keep_n=None)
         # compute vectors
         self.corpus = [self.dictionary.doc2bow(words) for words in self.iterator()]
 
@@ -62,7 +49,7 @@ class TextModel(object):
 
         # compute lda
         self.lda = models.LdaMulticore(self.corpus, id2word=self.dictionary, workers=3,
-                                       num_topics=self.num_topics, chunksize=10000)
+                                   num_topics=self.num_topics, chunksize=10000)
         self.corpus_lda = self.lda[self.corpus]
 
         # compute_similarity_index
@@ -75,8 +62,8 @@ class TextModel(object):
         if directory is None:
             directory = self.directory
 
-        pickle.dump(self.id2doc, open('%s/id2doc' % directory, 'w'))
-        self.dictionary.save('%s/words.dict' % directory)
+        pickle.dump(self.id2repo, open('%s/id2repo' % directory, 'w'))
+        self.dictionary.save('%s/users.dict' % directory)
 
         corpora.MmCorpus.serialize('%s/corpus_bow.mm' % directory, self.corpus)
         corpora.MmCorpus.serialize('%s/corpus_tfidf.mm' % directory, self.corpus_tfidf)
@@ -104,25 +91,20 @@ class TextModel(object):
     def load(self, directory=None):
         if directory is None:
             directory = self.directory
-            
-        self.id2doc = pickle.load(open('%s/id2doc' % directory, 'r'))
-        self.dictionary = corpora.Dictionary.load('%s/words.dict' % directory)
+
+        self.id2repo = pickle.load(open('%s/id2repo' % directory, 'r'))
+        self.dictionary = corpora.Dictionary.load('%s/users.dict' % directory)
         self.corpus = corpora.MmCorpus('%s/corpus_bow.mm' % directory)
         self.corpus_tfidf = corpora.MmCorpus('%s/corpus_tfidf.mm' % directory)
         self.corpus_lda = corpora.MmCorpus('%s/corpus_lda.mm' % directory)
         self.tfidf = models.TfidfModel.load('%s/tfidf.model' % directory)
         self.lda = models.LdaMulticore.load('%s/lda.model' % directory)
-        self.sim_tfidf_index = similarities.Similarity.load('%s/tfidf.index' % directory)
-        self.sim_lda_index = similarities.Similarity.load('%s/lda.index' % directory)
+        # self.sim_tfidf_index = similarities.Similarity.load('%s/tfidf.index' % directory)
+        # self.sim_lda_index = similarities.Similarity.load('%s/lda.index' % directory)
 
-    def query(self, repo_name, type="lda"):
-        repo = repos.find_one({'full_name': repo_name})
-        words = ' '.join([p['content'] for p in repo['readme']]).split()
-        # add description
-        words += repo['description'].split()
-        # filter words that are too short
-        words = [word for word in words if len(word) >= 3]
-        vec_bow = self.dictionary.doc2bow(words)
+    def query(self, repo, type="lda"):
+        users = r.smembers("repo:" + repo)
+        vec_bow = self.dictionary.doc2bow(users)
 
         if type == "lda":
             vec_lda = self.lda[vec_bow]
@@ -133,22 +115,15 @@ class TextModel(object):
         else:
             return None
 
-        if self.num_best is None:
-            return [(self.id2doc[id], cosine) for id, cosine in
-                sorted(enumerate(sims), key=lambda item: -item[1]) if cosine > 0]
-        else:
-            return sorted([(self.id2doc[id], cosine) for id, cosine in sims],
-                          key=lambda item: -item[1])
+        return [(self.id2repo[id], cosine) for id, cosine in sims]
 
     def set_num_best(self, num_best):
         self.num_best = num_best
         self.sim_tfidf_index.num_best = num_best
         self.sim_lda_index.num_best = num_best
 
-stars = pickle.load(open('stars.pk', 'r'))
-
 first_time = False
-model = TextModel()
+model = RepoModel()
 if not first_time:
     model.load()
 
@@ -156,10 +131,10 @@ cache = {}
 def find_similar_repos(repo_name, type="lda", num_best=100):
     if cache.has_key((repo_name, type, num_best)):
         return cache[(repo_name, type, num_best)]
+    model.set_num_best(num_best)
     sims = model.query(repo_name, type)
-    sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
     cache[(repo_name, type, num_best)] = sims
-    return sims[:num_best]
+    return sims
 
 if __name__ == '__main__':
     if first_time:
@@ -167,9 +142,6 @@ if __name__ == '__main__':
         model.save()
     else:
         model.load()
+    model.set_num_best(100)
     sims = model.query("jashkenas/backbone")
-    sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
-    print sims[:100]
-
-    # model.lda.print_topics()
-    # print model.lda.num_topics
+    print sims

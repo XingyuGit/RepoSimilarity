@@ -75,6 +75,19 @@ class RepoModel(object):
         self.sim_tfidf_index.save('%s/tfidf.index' % directory)
         self.sim_lda_index.save('%s/lda.index' % directory)
 
+    def recreate_index(self, directory=None):
+        if directory is None:
+            directory = self.directory
+
+        # compute_similarity_index
+        self.sim_tfidf_index = similarities.Similarity('%s/tfidf.shard' % directory,
+                        self.corpus_tfidf, len(self.dictionary), chunksize=256, shardsize=131072)
+        self.sim_lda_index = similarities.Similarity('%s/lda.shard' % directory,
+                        self.corpus_lda, self.lda.num_topics, chunksize=256, shardsize=131072)
+
+        self.sim_tfidf_index.save('%s/tfidf.index' % directory)
+        self.sim_lda_index.save('%s/lda.index' % directory)
+
     def load(self, directory=None):
         if directory is None:
             directory = self.directory

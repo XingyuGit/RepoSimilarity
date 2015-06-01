@@ -24,7 +24,7 @@ class TextModel(object):
     # word_frequency_upper_bound = 1000
     num_repos_upper_bound = 2000000
 
-    def __init__(self, directory='gensim'):
+    def __init__(self, directory='gensim_text'):
         self.i = 0
         self.id2doc = {}
         self.directory = ensure_directory(directory)
@@ -85,8 +85,7 @@ class TextModel(object):
         self.tfidf.save('%s/tfidf.model' % directory)
         self.lda.save('%s/lda.model' % directory)
 
-        self.sim_tfidf_index.save('%s/tfidf.index' % directory)
-        self.sim_lda_index.save('%s/lda.index' % directory)
+        self.recreate_index(directory)
 
     def recreate_index(self, directory=None):
         if directory is None:
@@ -100,6 +99,7 @@ class TextModel(object):
 
         self.sim_tfidf_index.save('%s/tfidf.index' % directory)
         self.sim_lda_index.save('%s/lda.index' % directory)
+
 
     def load(self, directory=None):
         if directory is None:
