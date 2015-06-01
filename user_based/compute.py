@@ -6,7 +6,6 @@ import heapq
 import pickle
 import scipy.stats
 
-MIN_STARS = 150
 NUM_TOP_REPOS = 100
 LOG_ROW_FREQ = 100000
 LOG_FILE_NAME = 'compute.log'
@@ -15,15 +14,32 @@ NUM_SEC_A_DAY = 86400    # 86400 ms in a day
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 logging.basicConfig(filename=LOG_FILE_NAME,level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 
-# key: user, value: list
-cached_user_repo_time = dict()
-
 print 'start loading pickle stars'
 stars = pickle.load(open('stars.pk', 'r'))
 print 'load pickle stars complete'
+
+
+# key: user, value: list
+cached_user_repo_time = {}
+
+# cache_find_similar_repos_jaccard[num_best][repo_name] = [('repo1', 1), ('repo2', 0.5), ...]
+cache_find_similar_repos_jaccard = {}
+
+# cache_find_similar_repos_jaccard_in_time_range[num_best][repo_name][time_range_in_day] = [('repo1', 1), ('repo2', 0.5), ...]
+cache_find_similar_repos_jaccard_in_time_range = {}
+
+# cache_find_similar_repos_jaccard_with_time_weight[num_best][repo_name][std] = [('repo1', 1), ('repo2', 0.5), ...]
+cache_find_similar_repos_jaccard_with_time_weight = {}
+
 # @profile
-def find_similar_repos(from_repo_name):
-    repo_dict = dict()
+def find_similar_repos_jaccard(from_repo_name, num_best = 100):
+    # check cache
+    if not cache_find_similar_repos_jaccard.has_key(num_best):
+        cache_find_similar_repos_jaccard[num_best] = {}
+    if cache_find_similar_repos_jaccard[num_best].has_key(from_repo_name):
+        return cache_find_similar_repos_jaccard[num_best][from_repo_name]
+
+    repo_dict = {}
     # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
     num_star_of_from_repo = stars.get(from_repo_name, 0)
     users = r.smembers('repo:' + from_repo_name)
@@ -33,12 +49,12 @@ def find_similar_repos(from_repo_name):
 
         for user_starred_repo in user_starred_repos:
             if not repo_dict.has_key(user_starred_repo):
-                repo_dict[user_starred_repo] = dict()
+                repo_dict[user_starred_repo] = {}
                 repo_dict[user_starred_repo]['count_common_stars'] = 1
             else:
                 repo_dict[user_starred_repo]['count_common_stars'] += 1
 
-    repo_jaccard_dict = dict()
+    repo_jaccard_dict = {}
     for to_repo in repo_dict:
         count_common_stars = repo_dict[to_repo]['count_common_stars']
         # num_star_of_to_repo = r.scard('repo:' + to_repo)
@@ -47,15 +63,27 @@ def find_similar_repos(from_repo_name):
         repo_dict[to_repo]['jaccard_similarity'] = jaccard_similarity
         repo_jaccard_dict[to_repo] = jaccard_similarity
 
-    k_keys_sorted_by_values = heapq.nlargest(NUM_TOP_REPOS, repo_jaccard_dict, key=repo_jaccard_dict.get)
+    top_ranked_repos = heapq.nlargest(num_best, repo_jaccard_dict, key=repo_jaccard_dict.get)
     
-    result_dict = dict()
-    for to_repo in k_keys_sorted_by_values:
-        result_dict[to_repo] = repo_dict[to_repo]['jaccard_similarity']
-    return result_dict
+    result_list = []
+    for to_repo in top_ranked_repos:
+        result_list.append((to_repo, repo_dict[to_repo]['jaccard_similarity']))
 
-def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
-    repo_dict = dict()
+    # store result_list to cache
+    cache_find_similar_repos_jaccard[num_best][from_repo_name] = result_list
+
+    return result_list
+
+def find_similar_repos_jaccard_in_time_range(from_repo_name, time_range_in_day, num_best=100):
+    # check cache
+    if not cache_find_similar_repos_jaccard_in_time_range.has_key(num_best):
+        cache_find_similar_repos_jaccard_in_time_range[num_best] = {}
+    if not cache_find_similar_repos_jaccard_in_time_range[num_best].has_key(from_repo_name):
+        cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name] = {}
+    if cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name].has_key(time_range_in_day):
+        return cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name][time_range_in_day]
+
+    repo_dict = {}
     # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
     num_star_of_from_repo = stars.get(from_repo_name, 0)
     users = r.smembers('repo:' + from_repo_name)
@@ -73,12 +101,12 @@ def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
 
         for user_starred_repo in user_starred_repos:
             if not repo_dict.has_key(user_starred_repo):
-                repo_dict[user_starred_repo] = dict()
+                repo_dict[user_starred_repo] = {}
                 repo_dict[user_starred_repo]['count_common_stars'] = 1
             else:
                 repo_dict[user_starred_repo]['count_common_stars'] += 1
 
-    repo_jaccard_dict = dict()
+    repo_jaccard_dict = {}
     for to_repo in repo_dict:
         count_common_stars = repo_dict[to_repo]['count_common_stars']
         # num_star_of_to_repo = r.scard('repo:' + to_repo)
@@ -87,19 +115,31 @@ def find_similar_repos_considering_time(from_repo_name, time_range_in_day):
         repo_dict[to_repo]['jaccard_similarity'] = jaccard_similarity
         repo_jaccard_dict[to_repo] = jaccard_similarity
 
-    top_ranked_repos = heapq.nlargest(NUM_TOP_REPOS, repo_jaccard_dict, key=repo_jaccard_dict.get)
+    top_ranked_repos = heapq.nlargest(num_best, repo_jaccard_dict, key=repo_jaccard_dict.get)
     
-    result_dict = dict()
+    result_list = []
     for to_repo in top_ranked_repos:
-        result_dict[to_repo] = repo_dict[to_repo]['jaccard_similarity']
-    return result_dict
+        result_list.append((to_repo, repo_dict[to_repo]['jaccard_similarity']))
+
+    # store result_list to cache
+    cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name][time_range_in_day] = result_list
+
+    return result_list
 
 # std is the standard deviation for the normal distribution
 # if std is 1, we we focus on starring events within +-1 day
 # if std is 2, we we focus on starring events within +-2 day
 # suggusted std value could be 0.25, 0.5, 1, 2, 4, 8, 16...
-def find_similar_repos_considering_time_range_all(from_repo_name, std):
-    repo_dict = dict()
+def find_similar_repos_jaccard_with_time_weight(from_repo_name, std, num_best = 100):
+    # check cache
+    if not cache_find_similar_repos_jaccard_with_time_weight.has_key(num_best):
+        cache_find_similar_repos_jaccard_with_time_weight[num_best] = {}
+    if not cache_find_similar_repos_jaccard_with_time_weight[num_best].has_key(from_repo_name):
+        cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name] = {}
+    if cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name].has_key(std):
+        return cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name][std]
+
+    repo_dict = {}
     # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
     num_star_of_from_repo = stars.get(from_repo_name, 0)
     users = r.smembers('repo:' + from_repo_name)
@@ -124,12 +164,12 @@ def find_similar_repos_considering_time_range_all(from_repo_name, std):
             count_weight = my_norm.pdf(diff_day_num)
 
             if not repo_dict.has_key(user_starred_repo):
-                repo_dict[user_starred_repo] = dict()
+                repo_dict[user_starred_repo] = {}
                 repo_dict[user_starred_repo]['count_common_stars'] = count_weight
             else:
                 repo_dict[user_starred_repo]['count_common_stars'] += count_weight
 
-    repo_jaccard_dict = dict()
+    repo_jaccard_dict = {}
     for to_repo in repo_dict:
         count_common_stars = repo_dict[to_repo]['count_common_stars']
         # num_star_of_to_repo = r.scard('repo:' + to_repo)
@@ -140,18 +180,21 @@ def find_similar_repos_considering_time_range_all(from_repo_name, std):
 
     top_ranked_repos = heapq.nlargest(NUM_TOP_REPOS, repo_jaccard_dict, key=repo_jaccard_dict.get)
     
-    result_dict = dict()
+    result_list = []
     for to_repo in top_ranked_repos:
-        result_dict[to_repo] = repo_dict[to_repo]['jaccard_similarity']
-    return result_dict
+        result_list.append((to_repo, repo_dict[to_repo]['jaccard_similarity']))
+
+    # store result_list to cache
+    cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name][std] = result_list
+
+    return result_list
 
 if __name__ == '__main__':
-    from_repo_name = 'jashkenas/backbone'
+    test_repo_name = 'jashkenas/backbone'
 
-    # my_dict = find_similar_repos(from_repo_name)
-    # my_dict = find_similar_repos_considering_time(from_repo_name, 2)
-    my_dict = find_similar_repos_considering_time_range_all(from_repo_name, 1)
+    # my_list = find_similar_repos_jaccard(test_repo_name)
+    # my_list = find_similar_repos_jaccard_in_time_range(test_repo_name, 2)
+    my_list = find_similar_repos_jaccard_with_time_weight(test_repo_name, 1)
 
-    my_list = sorted(my_dict.items(), key=lambda x: -x[1])
 
     print my_list
