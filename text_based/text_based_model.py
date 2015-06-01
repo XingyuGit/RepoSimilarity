@@ -71,30 +71,36 @@ class TextModel(object):
         self.sim_lda_index = similarities.Similarity('%s/lda.shard' % self.directory,
                         self.corpus_lda, self.lda.num_topics, chunksize=256, shardsize=131072)
 
-    def save(self):
-        pickle.dump(self.id2doc, open('%s/id2doc' % self.directory, 'w'))
-        self.dictionary.save('%s/words.dict' % self.directory)
+    def save(self, directory=None):
+        if directory is None:
+            directory = self.directory
 
-        corpora.MmCorpus.serialize('%s/corpus_bow.mm' % self.directory, self.corpus)
-        corpora.MmCorpus.serialize('%s/corpus_tfidf.mm' % self.directory, self.corpus_tfidf)
-        corpora.MmCorpus.serialize('%s/corpus_lda.mm' % self.directory, self.corpus_lda)
+        pickle.dump(self.id2doc, open('%s/id2doc' % directory, 'w'))
+        self.dictionary.save('%s/words.dict' % directory)
 
-        self.tfidf.save('%s/tfidf.model' % self.directory)
-        self.lda.save('%s/lda.model' % self.directory)
+        corpora.MmCorpus.serialize('%s/corpus_bow.mm' % directory, self.corpus)
+        corpora.MmCorpus.serialize('%s/corpus_tfidf.mm' % directory, self.corpus_tfidf)
+        corpora.MmCorpus.serialize('%s/corpus_lda.mm' % directory, self.corpus_lda)
 
-        self.sim_tfidf_index.save('%s/tfidf.index' % self.directory)
-        self.sim_lda_index.save('%s/lda.index' % self.directory)
+        self.tfidf.save('%s/tfidf.model' % directory)
+        self.lda.save('%s/lda.model' % directory)
 
-    def load(self):
-        self.id2doc = pickle.load(open('%s/id2doc' % self.directory, 'r'))
-        self.dictionary = corpora.Dictionary.load('%s/words.dict' % self.directory)
-        self.corpus = corpora.MmCorpus('%s/corpus_bow.mm' % self.directory)
-        self.corpus_tfidf = corpora.MmCorpus('%s/corpus_tfidf.mm' % self.directory)
-        self.corpus_lda = corpora.MmCorpus('%s/corpus_lda.mm' % self.directory)
-        self.tfidf = models.TfidfModel.load('%s/tfidf.model' % self.directory)
-        self.lda = models.LdaMulticore.load('%s/lda.model' % self.directory)
-        self.sim_tfidf_index = similarities.Similarity.load('%s/tfidf.index' % self.directory)
-        self.sim_lda_index = similarities.Similarity.load('%s/lda.index' % self.directory)
+        self.sim_tfidf_index.save('%s/tfidf.index' % directory)
+        self.sim_lda_index.save('%s/lda.index' % directory)
+
+    def load(self, directory=None):
+        if directory is None:
+            directory = self.directory
+            
+        self.id2doc = pickle.load(open('%s/id2doc' % directory, 'r'))
+        self.dictionary = corpora.Dictionary.load('%s/words.dict' % directory)
+        self.corpus = corpora.MmCorpus('%s/corpus_bow.mm' % directory)
+        self.corpus_tfidf = corpora.MmCorpus('%s/corpus_tfidf.mm' % directory)
+        self.corpus_lda = corpora.MmCorpus('%s/corpus_lda.mm' % directory)
+        self.tfidf = models.TfidfModel.load('%s/tfidf.model' % directory)
+        self.lda = models.LdaMulticore.load('%s/lda.model' % directory)
+        self.sim_tfidf_index = similarities.Similarity.load('%s/tfidf.index' % directory)
+        self.sim_lda_index = similarities.Similarity.load('%s/lda.index' % directory)
 
     def query(self, repo_name, type="lda"):
         repo = repos.find_one({'full_name': repo_name})
@@ -118,24 +124,37 @@ class TextModel(object):
             return [(self.id2doc[id], cosine) for id, cosine in
                 sorted(enumerate(sims), key=lambda item: -item[1]) if cosine > 0]
         else:
-            return [(self.id2doc[id], cosine) for id, cosine in sims]
+            return sorted([(self.id2doc[id], cosine) for id, cosine in sims],
+                          key=lambda item: -item[1])
 
     def set_num_best(self, num_best):
         self.num_best = num_best
         self.sim_tfidf_index.num_best = num_best
         self.sim_lda_index.num_best = num_best
 
+stars = pickle.load(open('stars.pk', 'r'))
+
+first_time = False
+model = TextModel()
+if not first_time:
+    model.load()
+
+cache = {}
+def find_similar_repos(repo_name, type="lda", num_best=100):
+    if cache.has_key((repo_name, type, num_best)):
+        return cache[(repo_name, type, num_best)]
+    sims = model.query(repo_name, type)
+    sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
+    cache[(repo_name, type, num_best)] = sims
+    return sims[:num_best]
+
 if __name__ == '__main__':
-    model = TextModel()
-    first_time = True
     if first_time:
         model.init()
         model.save()
     else:
         model.load()
-    # model.set_num_best(100)
     sims = model.query("jashkenas/backbone")
-    stars = pickle.load(open('stars.pk', 'r'))
     sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
     print sims[:100]
 
