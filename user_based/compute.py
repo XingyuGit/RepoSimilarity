@@ -34,10 +34,8 @@ cache_find_similar_repos_jaccard_with_time_weight = {}
 # @profile
 def find_similar_repos_jaccard(from_repo_name, num_best = 100):
     # check cache
-    if not cache_find_similar_repos_jaccard.has_key(num_best):
-        cache_find_similar_repos_jaccard[num_best] = {}
-    if cache_find_similar_repos_jaccard[num_best].has_key(from_repo_name):
-        return cache_find_similar_repos_jaccard[num_best][from_repo_name]
+    if cache_find_similar_repos_jaccard.has_key((from_repo_name, num_best)):
+        return cache_find_similar_repos_jaccard[(from_repo_name, num_best)]
 
     repo_dict = {}
     # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
@@ -70,18 +68,14 @@ def find_similar_repos_jaccard(from_repo_name, num_best = 100):
         result_list.append((to_repo, repo_dict[to_repo]['jaccard_similarity']))
 
     # store result_list to cache
-    cache_find_similar_repos_jaccard[num_best][from_repo_name] = result_list
+    cache_find_similar_repos_jaccard[(from_repo_name, num_best)] = result_list
 
     return result_list
 
 def find_similar_repos_jaccard_in_time_range(from_repo_name, time_range_in_day, num_best=100):
     # check cache
-    if not cache_find_similar_repos_jaccard_in_time_range.has_key(num_best):
-        cache_find_similar_repos_jaccard_in_time_range[num_best] = {}
-    if not cache_find_similar_repos_jaccard_in_time_range[num_best].has_key(from_repo_name):
-        cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name] = {}
-    if cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name].has_key(time_range_in_day):
-        return cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name][time_range_in_day]
+    if cache_find_similar_repos_jaccard_in_time_range.has_key((from_repo_name, time_range_in_day, num_best)):
+        return cache_find_similar_repos_jaccard_in_time_range[(from_repo_name, time_range_in_day, num_best)]
 
     repo_dict = {}
     # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
@@ -122,7 +116,7 @@ def find_similar_repos_jaccard_in_time_range(from_repo_name, time_range_in_day, 
         result_list.append((to_repo, repo_dict[to_repo]['jaccard_similarity']))
 
     # store result_list to cache
-    cache_find_similar_repos_jaccard_in_time_range[num_best][from_repo_name][time_range_in_day] = result_list
+    cache_find_similar_repos_jaccard_in_time_range[(from_repo_name, time_range_in_day, num_best)] = result_list
 
     return result_list
 
@@ -132,12 +126,8 @@ def find_similar_repos_jaccard_in_time_range(from_repo_name, time_range_in_day, 
 # suggusted std value could be 0.25, 0.5, 1, 2, 4, 8, 16...
 def find_similar_repos_jaccard_with_time_weight(from_repo_name, std, num_best = 100):
     # check cache
-    if not cache_find_similar_repos_jaccard_with_time_weight.has_key(num_best):
-        cache_find_similar_repos_jaccard_with_time_weight[num_best] = {}
-    if not cache_find_similar_repos_jaccard_with_time_weight[num_best].has_key(from_repo_name):
-        cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name] = {}
-    if cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name].has_key(std):
-        return cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name][std]
+    if cache_find_similar_repos_jaccard_with_time_weight.has_key((from_repo_name, std, num_best)):
+        return cache_find_similar_repos_jaccard_with_time_weight[(from_repo_name, std, num_best)]
 
     repo_dict = {}
     # num_star_of_from_repo = r.scard('repo:' + from_repo_name)
@@ -185,7 +175,7 @@ def find_similar_repos_jaccard_with_time_weight(from_repo_name, std, num_best = 
         result_list.append((to_repo, repo_dict[to_repo]['jaccard_similarity']))
 
     # store result_list to cache
-    cache_find_similar_repos_jaccard_with_time_weight[num_best][from_repo_name][std] = result_list
+    cache_find_similar_repos_jaccard_with_time_weight[(from_repo_name, std, num_best)] = result_list
 
     return result_list
 

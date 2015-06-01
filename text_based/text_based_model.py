@@ -154,6 +154,7 @@ if __name__ == '__main__':
         model.save()
     else:
         model.load()
+        model.save("../gensim_text")
     sims = model.query("jashkenas/backbone")
     sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
     print sims[:100]

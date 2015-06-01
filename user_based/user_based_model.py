@@ -62,8 +62,8 @@ class RepoModel(object):
         if directory is None:
             directory = self.directory
 
-        pickle.dump(self.id2doc, open('%s/id2doc' % directory, 'w'))
-        self.dictionary.save('%s/words.dict' % directory)
+        pickle.dump(self.id2repo, open('%s/id2repo' % directory, 'w'))
+        self.dictionary.save('%s/users.dict' % directory)
 
         corpora.MmCorpus.serialize('%s/corpus_bow.mm' % directory, self.corpus)
         corpora.MmCorpus.serialize('%s/corpus_tfidf.mm' % directory, self.corpus_tfidf)
@@ -79,8 +79,8 @@ class RepoModel(object):
         if directory is None:
             directory = self.directory
 
-        self.id2doc = pickle.load(open('%s/id2doc' % directory, 'r'))
-        self.dictionary = corpora.Dictionary.load('%s/words.dict' % directory)
+        self.id2repo = pickle.load(open('%s/id2repo' % directory, 'r'))
+        self.dictionary = corpora.Dictionary.load('%s/users.dict' % directory)
         self.corpus = corpora.MmCorpus('%s/corpus_bow.mm' % directory)
         self.corpus_tfidf = corpora.MmCorpus('%s/corpus_tfidf.mm' % directory)
         self.corpus_lda = corpora.MmCorpus('%s/corpus_lda.mm' % directory)
@@ -129,7 +129,6 @@ if __name__ == '__main__':
         model.save()
     else:
         model.load()
-        model.save("../gensim_user")
     model.set_num_best(100)
     sims = model.query("jashkenas/backbone")
     print sims

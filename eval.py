@@ -142,7 +142,7 @@ def eval_group_repos(group_repos, find_similar_repos_func):
 import functools
 import showcase_info as showcase
 from user_based import compute as user_based_jaccard
-# from user_based import user_based_model
+from user_based import user_based_model
 # from text_based import text_based_model
 
 if __name__ == "__main__":
