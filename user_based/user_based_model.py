@@ -129,6 +129,7 @@ if __name__ == '__main__':
         model.save()
     else:
         model.load()
+        model.save("../gensim_user")
     model.set_num_best(100)
-    sims = model.query("jashkenas/backbone", "tfidf")
+    sims = model.query("jashkenas/backbone")
     print sims

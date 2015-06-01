@@ -92,6 +92,7 @@ def plot_comparison(eval_funs, methods_short=[], methods_long=[], title=""):
     fig.savefig('image_output.png', dpi=300, format='png', bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.show()
 
+
 # test_repo_name = 'lalala/lalala'
 # compared_repos = ['repo1', 'repo2', ...]
 # my_function = [(f1, 0.5), (f2, 0.5)]
@@ -111,6 +112,7 @@ def eval_single_repo(test_repo_name, compared_repos, find_similar_repos_func):
         f1score_list.append(f1score)
 
     return precision_list, recall_list, f1score_list
+
 
 def eval_group_repos(group_repos, find_similar_repos_func):
     sum_precision_list = []
