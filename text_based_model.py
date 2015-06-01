@@ -169,9 +169,9 @@ if __name__ == '__main__':
         model.save()
     else:
         model.load()
-    sims = model.query("jashkenas/backbone")
-    sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
-    print sims[:100]
+    # sims = model.query("jashkenas/backbone")
+    # sims = [(name, score) for (name, score) in sims if stars.get(name, 0) >= 30]
+    # print sims[:100]
 
-    # model.lda.print_topics()
-    # print model.lda.num_topics
+    print model.lda.num_topics
+    model.lda.print_topics()

@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.font_manager as fm
 
-def find_mix(repo_name, weighted_method, use_rank=True, bsorted=True):
+def find_mix(repo_name, weighted_methods, use_rank=True, bsorted=True):
     repo_sims_dict = {}
-    for f, w in weighted_method:
+    for f, w in weighted_methods:
         sims = f(repo_name)
         if not bsorted:
             sims = sorted(sims, key=lambda x: -x[1])
@@ -48,22 +48,19 @@ def plot_precision_recall(precision_list, recall_list, title=""):
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title(title)
-    plt.legend()
-    plt.show()
-
+    plt.legend(loc='upper right')
 
 
 def plot_f1score(f1score_list, precision_list, recall_list, title=""):
     depths = range(1, len(f1score_list)+1)
     fig = plt.figure()
-    plt.plot(depths, precision_list, 'b-')
-    plt.plot(depths, recall_list, 'r-')
-    plt.plot(depths, f1score_list, 'm-')
+    plt.plot(depths, precision_list, 'b-', label="Precision")
+    plt.plot(depths, recall_list, 'r-', label="Recall")
+    plt.plot(depths, f1score_list, 'm-', label="F1 score")
     plt.xlabel("Depths")
     plt.ylabel('Scores')
     plt.title(title)
-    plt.legend()
-    plt.show()
+    plt.legend(loc='upper right')
 
 
 def plot_comparison(eval_funs, methods_short=[], methods_long=[], title=""):
@@ -71,9 +68,9 @@ def plot_comparison(eval_funs, methods_short=[], methods_long=[], title=""):
     length = len(eval_funs)
 
     max_f1score_list = []
-    for f in eval_funs():
-        plist, rlist, f1list = eval_funs()
-        f1score_max = max(f1list)
+    for f in eval_funs:
+        plist, rlist, f1list = f()
+        f1score_max = max(f1list) if len(f1list) > 0 else 0
         max_f1score_list.append(f1score_max)
 
     bar_width = 0.7
@@ -85,7 +82,7 @@ def plot_comparison(eval_funs, methods_short=[], methods_long=[], title=""):
 
     plt.xticks(index + 1.5*bar_width, methods_short)
     plt.xlabel('Methods')
-    plt.ylabel('Best F1Scores')
+    plt.ylabel('Best F1 Scores')
     plt.title(title)
 
     fontP = fm.FontProperties()
@@ -95,7 +92,6 @@ def plot_comparison(eval_funs, methods_short=[], methods_long=[], title=""):
                 ncol=2, fancybox=True, shadow=True, prop = fontP)
 
     fig.savefig('image_output.png', dpi=300, format='png', bbox_extra_artists=(lgd,), bbox_inches='tight')
-    plt.show()
 
 
 # test_repo_name = 'lalala/lalala'
@@ -110,6 +106,8 @@ def eval_single_repo(test_repo_name, compared_repos, find_similar_repos_func):
     # ranked_similar_repos: list of repo names in sorted order
     ranked_similar_repos = find_similar_repos_func(test_repo_name)
 
+    print test_repo_name
+
     for depth in range(1, len(ranked_similar_repos)+1):
         precision, recall, f1score = eval(depth, ranked_similar_repos, compared_repos)
         precision_list.append(precision)
@@ -118,8 +116,12 @@ def eval_single_repo(test_repo_name, compared_repos, find_similar_repos_func):
 
     return precision_list, recall_list, f1score_list
 
-
+cache = {}
 def eval_group_repos(group_repos, find_similar_repos_func):
+
+    if cache.has_key(str(group_repos) + str(find_similar_repos_func)):
+        return cache[str(group_repos) + str(find_similar_repos_func)]
+
     sum_precision_list = []
     sum_recall_list = []
     sum_f1score_list = []
@@ -142,15 +144,10 @@ def eval_group_repos(group_repos, find_similar_repos_func):
     mean_recall_list = [x / group_size for x in sum_recall_list]
     mean_f1score_list = [x / group_size for x in sum_f1score_list]
 
+    cache[str(group_repos) + str(find_similar_repos_func)] = (mean_precision_list, mean_recall_list, mean_f1score_list)
     return mean_precision_list, mean_recall_list, mean_f1score_list
 
 
-import functools
-import showcase_info as showcase
-from user_based import compute as user_based_jaccard
-import user_based_model
-import text_based_model
 
 if __name__ == "__main__":
-
     pass

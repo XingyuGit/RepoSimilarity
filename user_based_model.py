@@ -72,8 +72,7 @@ class RepoModel(object):
         self.tfidf.save('%s/tfidf.model' % directory)
         self.lda.save('%s/lda.model' % directory)
 
-        self.sim_tfidf_index.save('%s/tfidf.index' % directory)
-        self.sim_lda_index.save('%s/lda.index' % directory)
+        self.recreate_index(directory)
 
     def recreate_index(self, directory=None):
         if directory is None:
@@ -99,8 +98,8 @@ class RepoModel(object):
         self.corpus_lda = corpora.MmCorpus('%s/corpus_lda.mm' % directory)
         self.tfidf = models.TfidfModel.load('%s/tfidf.model' % directory)
         self.lda = models.LdaMulticore.load('%s/lda.model' % directory)
-        # self.sim_tfidf_index = similarities.Similarity.load('%s/tfidf.index' % directory)
-        # self.sim_lda_index = similarities.Similarity.load('%s/lda.index' % directory)
+        self.sim_tfidf_index = similarities.Similarity.load('%s/tfidf.index' % directory)
+        self.sim_lda_index = similarities.Similarity.load('%s/lda.index' % directory)
 
     def query(self, repo, type="lda"):
         users = r.smembers("repo:" + repo)
