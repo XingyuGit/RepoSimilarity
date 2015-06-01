@@ -144,6 +144,7 @@ def eval_group_repos(group_repos, find_similar_repos_func):
 
     return mean_precision_list, mean_recall_list, mean_f1score_list
 
+
 import functools
 import showcase_info as showcase
 from user_based import compute as user_based_jaccard

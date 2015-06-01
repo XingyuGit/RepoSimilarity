@@ -3,7 +3,7 @@ import pymongo
 from gensim import corpora, models, similarities
 import itertools
 import os
-import pickle
+from global_import import stars
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
@@ -145,7 +145,7 @@ class TextModel(object):
         self.sim_tfidf_index.num_best = num_best
         self.sim_lda_index.num_best = num_best
 
-stars = pickle.load(open('stars.pk', 'r'))
+
 
 first_time = False
 model = TextModel()

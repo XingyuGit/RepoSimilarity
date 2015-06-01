@@ -5,6 +5,7 @@ import time
 import heapq
 import pickle
 import scipy.stats
+from global_import import stars
 
 NUM_TOP_REPOS = 100
 LOG_ROW_FREQ = 100000
@@ -13,10 +14,6 @@ NUM_SEC_A_DAY = 86400    # 86400 ms in a day
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 logging.basicConfig(filename=LOG_FILE_NAME,level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
-
-print 'start loading pickle stars'
-stars = pickle.load(open('stars.pk', 'r'))
-print 'load pickle stars complete'
 
 
 # key: user, value: list
