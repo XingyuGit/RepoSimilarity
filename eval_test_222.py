@@ -5,7 +5,7 @@ import showcase_info as showcase
 import logging
 import functools
 
-import compute
+# import compute
 # matplotlib.use('GTKAgg')
 
 
